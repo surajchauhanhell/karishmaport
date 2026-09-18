@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,25 +38,12 @@ const collab = base.omit({ name: true, subject: true }).extend({
   target_date: z.string().refine((v) => !v || /^\d{4}-\d{2}-\d{2}$/.test(v), 'Choose a date.'),
 });
 type Values = Record<string, string | boolean>;
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (el: HTMLElement, options: Record<string, unknown>) => string;
-      remove: (id: string) => void;
-      reset: (id: string) => void;
-    };
-  }
-}
 export default function EnquiryForm({ collaboration = false }: { collaboration?: boolean }) {
   const c = useCreator();
   const toast = useToast();
   const [serverError, setServerError] = useState('');
-  const [token, setToken] = useState('');
-  const captcha = useRef<HTMLDivElement>(null);
-  const widget = useRef('');
   const started = useRef(false);
   const requestId = useRef(crypto.randomUUID());
-  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
   const {
     register,
     handleSubmit,
@@ -73,33 +60,6 @@ export default function EnquiryForm({ collaboration = false }: { collaboration?:
       target_date: '',
     },
   });
-  useEffect(() => {
-    if (!siteKey) return;
-    let dead = false;
-    const render = () => {
-      if (!dead && captcha.current && window.turnstile)
-        widget.current = window.turnstile.render(captcha.current, {
-          sitekey: siteKey,
-          callback: setToken,
-          'expired-callback': () => setToken(''),
-        });
-    };
-    const existing = document.getElementById('turnstile-script');
-    if (window.turnstile) render();
-    else if (existing) existing.addEventListener('load', render, { once: true });
-    else {
-      const s = document.createElement('script');
-      s.id = 'turnstile-script';
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-      s.async = true;
-      s.addEventListener('load', render, { once: true });
-      document.head.appendChild(s);
-    }
-    return () => {
-      dead = true;
-      if (widget.current) window.turnstile?.remove(widget.current);
-    };
-  }, [siteKey]);
   const fields = collaboration
     ? [
         ['brand_name', 'Brand name'],
@@ -123,28 +83,33 @@ export default function EnquiryForm({ collaboration = false }: { collaboration?:
   async function submit(values: Values) {
     setServerError('');
     try {
-      const { data, error } = await requireSupabase().functions.invoke('public-api', {
-        body: {
-          action: collaboration ? 'collaboration' : 'contact',
-          values,
-          token,
-          request_id: requestId.current,
-        },
-      });
-      if (error || data?.error)
+      if (values.website_trap) throw new Error('Please leave the hidden field empty.');
+      const table = collaboration ? 'collaboration_inquiries' : 'contact_messages';
+
+      const { website_trap, target_date, consent, ...rest } = values;
+      const payload: Record<string, unknown> = {
+        ...rest,
+        consent: !!consent,
+        request_id: requestId.current,
+      };
+
+      if (target_date) {
+        payload.target_date = target_date;
+      }
+
+      const { error } = await requireSupabase().from(table).insert([payload]);
+
+      if (error)
         throw new Error(
-          data?.error || 'Your message could not be sent. Please try again or email Karishma.',
+          error.message || 'Your message could not be sent. Please try again or email Karishma.',
         );
+
       toast('Message sent. Thank you for reaching out!');
       if (collaboration) track('brand_inquiry_submit');
       reset();
       requestId.current = crypto.randomUUID();
-      setToken('');
-      if (widget.current) window.turnstile?.reset(widget.current);
     } catch (e) {
       setServerError(e instanceof Error ? e.message : 'Please try again.');
-      if (widget.current) window.turnstile?.reset(widget.current);
-      setToken('');
     }
   }
   return (
@@ -208,17 +173,12 @@ export default function EnquiryForm({ collaboration = false }: { collaboration?:
           {errors.consent && <small>{String(errors.consent.message)}</small>}
         </div>
       </div>
-      {siteKey && <div ref={captcha} />}{' '}
       {serverError && (
         <p role="alert" className="form-error">
           {serverError}
         </p>
       )}
-      <button
-        type="submit"
-        className="button"
-        disabled={isSubmitting || !supabase || (!!siteKey && !token)}
-      >
+      <button type="submit" className="button" disabled={isSubmitting || !supabase}>
         {isSubmitting ? 'Sending…' : collaboration ? 'Send collaboration enquiry' : 'Send message'}
       </button>
     </form>

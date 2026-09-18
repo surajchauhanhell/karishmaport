@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 const schema = (await fs.readFile('supabase/schema.sql', 'utf8'))
   .replace(/^begin;\s*$/m, '')
   .replace(/^commit;\s*$/m, '');
+const inbox = (await fs.readFile('outputs/supabase-inbox-update.sql', 'utf8')).replace(/^begin;$/m, '').replace(/^commit;$/m, '');
 const seed = await fs.readFile('supabase/seed.sql', 'utf8');
 const admin = await fs.readFile('supabase/admin.sql', 'utf8');
 const header = `-- KARISHMA CHAUHAN: COMPLETE SUPABASE SETUP
@@ -18,6 +19,6 @@ const header = `-- KARISHMA CHAUHAN: COMPLETE SUPABASE SETUP
 begin;
 `;
 await fs.mkdir('outputs', { recursive: true });
-await fs.writeFile('outputs/supabase-setup.sql', `${header}\n${schema}\n${seed}\n${admin}\ncommit;\n`);
+await fs.writeFile('outputs/supabase-setup.sql', `${header}\n${schema}\n${seed}\n${inbox}\n${admin}\ncommit;\n`);
 await fs.copyFile('supabase/admin.sql', 'outputs/supabase-admin-only.sql');
 console.log('Prepared outputs/supabase-setup.sql and outputs/supabase-admin-only.sql');

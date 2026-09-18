@@ -4,6 +4,8 @@ A complete Vite / React / TypeScript creator platform with Tailwind CSS, React R
 
 ## Run locally
 
+**Latest inbox update:** Contact and collaboration forms now insert directly into Supabase. On an existing database, run `outputs/supabase-inbox-update.sql` and deploy this source. Admin inboxes support viewing and deletion only. See `outputs/INBOX-SETUP.md`. Earlier Edge Function/Turnstile form instructions below are superseded; that function is still used for analytics. This direct form flow has database validation but no server-side CAPTCHA or rate limiting.
+
 Requires Node.js 22+ and npm.
 
 ```sh

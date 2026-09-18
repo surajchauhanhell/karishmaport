@@ -245,6 +245,7 @@ function Manager({ table }: { table: TableName }) {
       await remove(table, deleting);
       toast('Record deleted');
       setDeleting(null);
+      if (editing?.id === deleting) setEditing(null);
       result.reload();
     } catch {
       toast('Could not delete this record. Please try again.');
@@ -274,10 +275,7 @@ function Manager({ table }: { table: TableName }) {
     <>
       {inbox && (
         <div className="actions">
-          <p>
-            {result.data.filter((row) => row.status === 'new').length} new - {result.data.length}{' '}
-            total - Updates every 30 seconds
-          </p>
+          <p>{result.data.length} messages - Updates every 30 seconds</p>
           <button type="button" className="button secondary" onClick={result.reload}>
             Refresh inbox
           </button>
@@ -300,7 +298,7 @@ function Manager({ table }: { table: TableName }) {
             : undefined
         }
       />
-      {editing && (
+      {editing && !inbox && (
         <Editor
           table={table}
           initial={editing}
@@ -310,6 +308,28 @@ function Manager({ table }: { table: TableName }) {
             result.reload();
           }}
         />
+      )}
+      {editing && inbox && (
+        <section className="admin-editor">
+          <h2>Message details</h2>
+          <dl>
+            {Object.entries(editing)
+              .filter(([key]) => !['id', 'request_id', 'consent', 'status'].includes(key))
+              .map(([key, value]) => (
+                <div key={key}>
+                  <dt className="eyebrow">{key.replaceAll('_', ' ')}</dt>
+                  <dd
+                    style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: '0 0 20px' }}
+                  >
+                    {String(value ?? '')}
+                  </dd>
+                </div>
+              ))}
+          </dl>
+          <button type="button" className="button secondary" onClick={() => setEditing(null)}>
+            Close details
+          </button>
+        </section>
       )}
       {(catalog || inbox) && (
         <div className="actions">
@@ -343,7 +363,7 @@ function Manager({ table }: { table: TableName }) {
           <thead>
             <tr>
               <th>{inbox ? 'Enquiry' : 'Name / title'}</th>
-              <th>Status / category</th>
+              <th>{inbox ? 'Subject / campaign' : 'Status / category'}</th>
               <th>Created</th>
               <th>Actions</th>
             </tr>
@@ -367,7 +387,8 @@ function Manager({ table }: { table: TableName }) {
                 </td>
                 <td>
                   {String(
-                    row.status ??
+                    (inbox ? row.subject || row.campaign_type : undefined) ??
+                      row.status ??
                       row.category ??
                       (row.published ? 'Published' : row.active ? 'Active' : ''),
                   )}
@@ -375,7 +396,7 @@ function Manager({ table }: { table: TableName }) {
                 <td>{row.created_at ? new Date(row.created_at).toLocaleDateString() : ''}</td>
                 <td>
                   <button onClick={() => setEditing({ ...row })}>
-                    {inbox ? 'Read / update' : 'Edit'}
+                    {inbox ? 'View message' : 'Edit'}
                   </button>
                   {!settings && (
                     <button style={{ marginLeft: 15 }} onClick={() => setDeleting(row.id)}>

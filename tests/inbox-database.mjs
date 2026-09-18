@@ -1,0 +1,30 @@
+import { PGlite } from '@electric-sql/pglite';
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const db = new PGlite();
+await db.exec(`create role anon; create role authenticated; create schema auth;
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+create table public.admin_users(user_id uuid);
+create function public.is_admin() returns boolean language sql security definer set search_path='' as $$ select exists(select 1 from public.admin_users where user_id=auth.uid()) $$;
+grant usage on schema public,auth to anon,authenticated;`);
+const schema = await fs.readFile('supabase/schema.sql','utf8');
+await db.exec(schema.slice(schema.indexOf('create table public.collaboration_inquiries'), schema.indexOf('create table public.looks')));
+const sql = await fs.readFile('outputs/supabase-inbox-update.sql','utf8');
+await db.exec(sql); await db.exec(sql);
+await db.exec(`set role anon;
+insert into contact_messages(request_id,name,email,subject,message,consent) values(gen_random_uuid(),'Visitor','v@example.test','Hello','Test message',true);
+insert into collaboration_inquiries(request_id,brand_name,contact_name,email,campaign_type,product,deliverables,message,consent) values(gen_random_uuid(),'Brand','Partner','p@example.test','Reel','Makeup','One reel','Test collaboration',true);`);
+await assert.rejects(db.exec('select * from contact_messages'));
+await assert.rejects(db.exec("insert into contact_messages(request_id,name,email,subject,message,consent,status) values(gen_random_uuid(),'Visitor','v@example.test','Hello','Test message',true,'replied')"));
+await assert.rejects(db.exec("insert into contact_messages(request_id,name,email,subject,message,consent) values(gen_random_uuid(),'Visitor','v@example.test','Hello','Test message',false)"));
+await db.exec(`reset role; insert into admin_users values('00000000-0000-0000-0000-000000000010'); set role authenticated;`);
+assert.equal((await db.query('select * from contact_messages')).rows.length,0);
+await db.exec(`select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000010',false)`);
+for(const table of ['contact_messages','collaboration_inquiries']) {
+  assert.equal((await db.query('select * from '+table)).rows.length,1);
+  await assert.rejects(db.exec('update '+table+" set message='Edited'"));
+  await db.exec('delete from '+table);
+  assert.equal((await db.query('select * from '+table)).rows.length,0);
+}
+await db.close();
+console.log('Inbox SQL passed: submission, privacy, protected fields, consent, admin read/delete, edit denial, repeat-safe update.');
