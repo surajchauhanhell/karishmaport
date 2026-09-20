@@ -32,7 +32,7 @@ The numbered steps below describe the equivalent separate-file setup. Do not run
 
 1. Create a Supabase project. Run `supabase/schema.sql` once in the SQL editor, then run `supabase/seed.sql`. The seed can be safely rerun. It adds ten **draft titles**, two **inactive demo products**, the supplied profile and starter smart links. It does not fabricate creator work, endorsements or personal product use.
 2. Put the project URL and public anon key in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Never use a service-role key in any `VITE_` variable. These public values are embedded in the frontend; RLS provides authorization.
-3. Set `VITE_SITE_URL` to your actual public origin. Set Auth → URL configuration to the production origin and local development origin as appropriate. Disable public signups; create admin accounts through the Supabase dashboard.
+3. Set the canonical origin in `src/data/seo.json` when changing domains. Set Auth → URL configuration to the production origin and local development origin as appropriate. Disable public signups; create admin accounts through the Supabase dashboard.
 4. Create the administrator in Authentication → Users. Use its UUID, not an email, in the SQL editor:
 
 ```sql
@@ -80,12 +80,12 @@ Optional GA4: set `VITE_GA_MEASUREMENT_ID=G-...`. GA loads only after visitor co
 ## SEO and deployment to Vercel
 
 1. Import this directory as a Vercel project; framework Vite, build `npm run build`, output `dist`.
-2. Add public `VITE_` variables in project settings before building. `VITE_SITE_URL` must be the canonical production origin. Keep Edge Function secrets only in Supabase.
+2. Add public `VITE_` variables in project settings before building. The canonical production origin and static page metadata are maintained in `src/data/seo.json`. Keep Edge Function secrets only in Supabase.
 3. Deploy, add your domain, and update Supabase Auth, `ALLOWED_ORIGINS`, and Turnstile allowed hostnames.
 4. Upload a real profile/social image in Settings. Open Graph and Twitter images are emitted when supplied; no fake portrait is generated. Set `VITE_GOOGLE_SITE_VERIFICATION` for Search Console, then submit `/sitemap.xml`.
 5. Redeploy after public content changes to refresh static SEO metadata. Static route files take precedence over the SPA fallback; `vercel.json` uses filesystem routing first. New client-side routes remain accessible before the next build but their crawler metadata requires that rebuild.
 
-Public routes: `/`, `/about`, `/portfolio`, `/portfolio/:slug`, `/shop`, `/shop/:slug`, `/looks/:slug`, `/work-with-me`, `/media-kit`, `/blog`, `/blog/:slug`, `/contact`, `/privacy`, `/affiliate-disclosure`, `/go/:keyword`. Unknown routes show a custom 404 view; SPA hosting may still return HTTP 200 for an unknown path. Admin pages use `noindex,nofollow`; robots excludes `/admin` and `/go/`. Metadata and schemas are available both in rendered React and build-generated route heads. Full article body is client-rendered; use SSR/prerendered bodies if crawler requirements expand beyond this Vite implementation.
+Public routes: `/`, `/about`, `/portfolio`, `/portfolio/:slug`, `/shop`, `/shop/:slug`, `/looks/:slug`, `/work-with-me`, `/media-kit`, `/blog`, `/blog/:slug`, `/contact`, `/privacy`, `/affiliate-disclosure`, `/go/:keyword`. Unknown routes show a custom 404 view; SPA hosting may still return HTTP 200 for an unknown path. Admin pages use `noindex,nofollow`; Vercel sends `X-Robots-Tag: noindex, nofollow` for `/admin` and `/go/`; robots allows crawling so these directives can be read. Metadata and schemas are available both in rendered React and build-generated route heads. Full article body is client-rendered; use SSR/prerendered bodies if crawler requirements expand beyond this Vite implementation.
 
 ## Verification
 

@@ -1,3 +1,4 @@
+import seo from '../data/seo.json';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, ArrowRight, Sparkles } from 'lucide-react';
 import { useCreator } from '../contexts/CreatorContext';
@@ -39,6 +40,7 @@ export default function Home() {
           mainEntity: {
             '@type': 'Person',
             name: c.name,
+            url: seo.origin + '/',
             alternateName: '@itskarishma.chauhan',
             jobTitle: 'Beauty, Fashion & Lifestyle Content Creator',
             sameAs: [c.instagram_url, ...(safeUrl(c.youtube_url) ? [c.youtube_url] : [])],

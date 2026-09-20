@@ -1,0 +1,45 @@
+{
+  "origin": "https://karishmaport.vercel.app",
+  "pages": {
+    "/": {
+      "title": "Karishma Chauhan | Mumbai Beauty, Fashion & Lifestyle Creator",
+      "description": "Meet Karishma Chauhan, a Mumbai beauty, fashion and lifestyle creator. Explore her reels, traditional looks, product picks and brand collaboration services."
+    },
+    "/about": {
+      "title": "About Karishma Chauhan | Mumbai Content Creator",
+      "description": "Get to know Karishma Chauhan and her approach to beauty, fashion, GRWM and everyday lifestyle content from Mumbai, India."
+    },
+    "/portfolio": {
+      "title": "Beauty & Fashion Portfolio | Karishma Chauhan",
+      "description": "Explore Karishma Chauhan's beauty reels, fashion styling, traditional looks, GRWM and lifestyle content. Follow her work on Instagram and YouTube."
+    },
+    "/shop": {
+      "title": "Beauty & Fashion Picks | Karishma Chauhan",
+      "description": "Browse Karishma Chauhan's makeup, skincare, hair, fashion and accessory picks. Explore shop-the-look collections and affiliate shopping links."
+    },
+    "/work-with-me": {
+      "title": "Brand Collaborations & UGC | Karishma Chauhan",
+      "description": "Collaborate with Mumbai creator Karishma Chauhan on sponsored reels, UGC videos, product demonstrations and beauty or fashion campaigns."
+    },
+    "/media-kit": {
+      "title": "Creator Media Kit | Karishma Chauhan",
+      "description": "Explore Karishma Chauhan's creator profile, content services and available audience information for beauty, fashion and lifestyle brand collaborations."
+    },
+    "/blog": {
+      "title": "Beauty, Fashion & Lifestyle Blog | Karishma Chauhan",
+      "description": "Read Karishma Chauhan's beauty, makeup, fashion and lifestyle journal, with product discoveries, styling inspiration and everyday creator stories."
+    },
+    "/contact": {
+      "title": "Contact Karishma Chauhan | Enquiries & Collaborations",
+      "description": "Contact Karishma Chauhan for beauty and fashion collaborations, creator enquiries or questions about her content and product picks."
+    },
+    "/privacy": {
+      "title": "Privacy Policy | Karishma Chauhan",
+      "description": "Learn how Karishma Chauhan's website handles contact details, collaboration enquiries, cookies and website analytics."
+    },
+    "/affiliate-disclosure": {
+      "title": "Affiliate Disclosure | Karishma Chauhan",
+      "description": "Understand how affiliate shopping links work on Karishma Chauhan's website and when purchases may earn a commission."
+    }
+  }
+}

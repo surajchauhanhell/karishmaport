@@ -2,7 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadEnv } from 'vite';
 const env = { ...loadEnv('production', process.cwd(), ''), ...process.env };
-const origin = (env.VITE_SITE_URL || 'http://localhost:5173').replace(/\/$/, '');
+const seo = JSON.parse(await fs.readFile('src/data/seo.json', 'utf8'));
+const origin = seo.origin;
+if (new URL(origin).protocol !== 'https:') throw new Error('SEO origin must use HTTPS.');
 const esc = (s) =>
   String(s).replace(
     /[&<>"']/g,
@@ -35,7 +37,7 @@ if (env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY) {
     const out = [];
     for (let offset = 0; ; offset += 1000) {
       const response = await fetch(
-        `${env.VITE_SUPABASE_URL}/rest/v1/${table}?select=*&limit=1000&offset=${offset}`,
+        `${env.VITE_SUPABASE_URL}/rest/v1/${table}?select=*&order=created_at.asc,id.asc&limit=1000&offset=${offset}`,
         {
           headers: {
             apikey: env.VITE_SUPABASE_ANON_KEY,
@@ -54,6 +56,7 @@ if (env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY) {
     ['creator_settings', 'products', 'blog_posts', 'portfolio_items', 'looks'].map(get),
   );
   settings = { ...settings, ...s[0] };
+  settings.youtube_url ||= 'https://www.youtube.com/@Karishmachauhan2z';
   for (const [prefix, rows] of [
     ['shop', products.filter((x) => x.active && !x.is_demo)],
     ['blog', posts.filter((x) => x.status === 'published')],
@@ -67,13 +70,16 @@ if (env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY) {
         title: r.seo_title || r.title || r.name,
         description: r.seo_description || r.excerpt || r.description,
         image: r.featured_image || r.thumbnail_url || r.image_url,
+        modified: r.updated_at || r.published_at || r.created_at,
         article: prefix === 'blog' ? r : null,
       });
     }
 }
 for (const r of routes) {
-  const title = r.title ? `${r.title} | ${settings.name}` : settings.seo_title;
-  const description = r.description || settings.seo_description;
+  const title =
+    seo.pages[r.url]?.title ||
+    (r.title?.includes(settings.name) ? r.title : `${r.title} | ${settings.name}`);
+  const description = r.description || seo.pages[r.url]?.description || settings.seo_description;
   const image = r.image || settings.og_image || settings.profile_image;
   const url = origin + r.url;
   const schema = r.article
@@ -94,6 +100,8 @@ for (const r of routes) {
           mainEntity: {
             '@type': 'Person',
             name: settings.name,
+            url: origin + '/',
+            jobTitle: 'Beauty, Fashion & Lifestyle Content Creator',
             alternateName: '@itskarishma.chauhan',
             sameAs: [
               settings.instagram_url,
@@ -102,8 +110,15 @@ for (const r of routes) {
             address: { '@type': 'PostalAddress', addressLocality: 'Mumbai', addressCountry: 'IN' },
           },
         }
-      : null;
-  const meta = `<title>${esc(title)}</title><meta data-rh="true" name="description" content="${esc(description)}"><link data-rh="true" rel="canonical" href="${esc(url)}"><meta data-rh="true" name="robots" content="index,follow"><meta data-rh="true" property="og:title" content="${esc(title)}"><meta data-rh="true" property="og:description" content="${esc(description)}"><meta data-rh="true" property="og:url" content="${esc(url)}"><meta data-rh="true" property="og:type" content="${r.article ? 'article' : 'website'}"><meta data-rh="true" name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}"><meta data-rh="true" name="twitter:title" content="${esc(title)}"><meta data-rh="true" name="twitter:description" content="${esc(description)}">${image ? `<meta data-rh="true" property="og:image" content="${esc(image)}"><meta data-rh="true" name="twitter:image" content="${esc(image)}">` : ''}${env.VITE_GOOGLE_SITE_VERIFICATION ? `<meta data-rh="true" name="google-site-verification" content="${esc(env.VITE_GOOGLE_SITE_VERIFICATION)}">` : ''}${schema ? `<script data-rh="true" type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script>` : ''}`;
+      : {
+          '@context': 'https://schema.org',
+          '@type': ['/portfolio', '/shop', '/blog'].includes(r.url) ? 'CollectionPage' : 'WebPage',
+          name: title,
+          description,
+          url,
+          isPartOf: { '@type': 'WebSite', name: settings.name, url: origin + '/' },
+        };
+  const meta = `<title>${esc(title)}</title><meta data-rh="true" name="description" content="${esc(description)}"><link data-rh="true" rel="canonical" href="${esc(url)}"><meta data-rh="true" name="robots" content="index,follow"><meta data-rh="true" property="og:site_name" content="${esc(settings.name)}"><meta data-rh="true" property="og:locale" content="en_IN"><meta data-rh="true" property="og:title" content="${esc(title)}"><meta data-rh="true" property="og:description" content="${esc(description)}"><meta data-rh="true" property="og:url" content="${esc(url)}"><meta data-rh="true" property="og:type" content="${r.article ? 'article' : 'website'}"><meta data-rh="true" name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}"><meta data-rh="true" name="twitter:title" content="${esc(title)}"><meta data-rh="true" name="twitter:description" content="${esc(description)}">${image ? `<meta data-rh="true" property="og:image" content="${esc(image)}"><meta data-rh="true" name="twitter:image" content="${esc(image)}">` : ''}${env.VITE_GOOGLE_SITE_VERIFICATION ? `<meta data-rh="true" name="google-site-verification" content="${esc(env.VITE_GOOGLE_SITE_VERIFICATION)}">` : ''}${schema ? `<script data-rh="true" type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script>` : ''}`;
   const html = base
     .replace(/<title>.*?<\/title>/s, '')
     .replace(/<meta name="description"[^>]*\/>/, '')
@@ -115,10 +130,7 @@ for (const r of routes) {
 }
 await fs.writeFile(
   'dist/sitemap.xml',
-  `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map((r) => `<url><loc>${esc(origin + r.url)}</loc></url>`).join('')}</urlset>`,
+  `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map((r) => `<url><loc>${esc(origin + r.url)}</loc>${r.modified && !Number.isNaN(Date.parse(r.modified)) ? `<lastmod>${new Date(r.modified).toISOString()}</lastmod>` : ''}</url>`).join('')}</urlset>`,
 );
-await fs.writeFile(
-  'dist/robots.txt',
-  `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /go/\nSitemap: ${origin}/sitemap.xml\n`,
-);
+await fs.writeFile('dist/robots.txt', `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
 console.log(`SEO: generated ${routes.length} route documents and sitemap.`);

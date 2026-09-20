@@ -1,3 +1,4 @@
+import seo from '../data/seo.json';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -357,7 +358,7 @@ function Blog() {
         </div>
       );
     if (!item) return <Missing name="story" />;
-    const url = new URL(`/blog/${item.slug}`, import.meta.env.VITE_SITE_URL || location.origin)
+    const url = new URL(`/blog/${item.slug}`, seo.origin)
       .href;
     return (
       <div className="container">

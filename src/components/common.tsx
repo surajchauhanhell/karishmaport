@@ -7,6 +7,7 @@ import { safeUrl } from '../utils/urls';
 import { track } from '../services/analytics';
 import type { Product, PortfolioItem, BlogPost } from '../types';
 import { useState, useEffect, type ReactNode } from 'react';
+import seo from '../data/seo.json';
 export function SEO({
   title,
   description,
@@ -22,23 +23,43 @@ export function SEO({
 }) {
   const c = useCreator();
   const l = useLocation();
-  const origin = import.meta.env.VITE_SITE_URL || window.location.origin;
-  const url = new URL(l.pathname, origin).href;
+  const origin = seo.origin;
+  const page = seo.pages[(l.pathname.replace(/\/$/, '') || '/') as keyof typeof seo.pages] as
+    { title: string; description: string } | undefined;
+  const fullTitle = page?.title || (title.includes(c.name) ? title : `${title} | ${c.name}`);
+  const summary = description || page?.description || c.seo_description;
+  const url = new URL(l.pathname.replace(/\/$/, '') || '/', origin).href;
   const pic = safeUrl(image || c.og_image || c.profile_image);
+  const structured =
+    json ||
+    (!noindex
+      ? {
+          '@context': 'https://schema.org',
+          '@type': ['/portfolio', '/shop', '/blog'].includes(l.pathname)
+            ? 'CollectionPage'
+            : 'WebPage',
+          name: fullTitle,
+          description: summary,
+          url,
+          isPartOf: { '@type': 'WebSite', name: c.name, url: origin + '/' },
+        }
+      : undefined);
   return (
     <Helmet>
-      <title>{title.includes(c.name) ? title : `${title} | ${c.name}`}</title>
-      <meta name="description" content={description || c.seo_description} />
+      <title>{fullTitle}</title>
+      <meta name="description" content={summary} />
       <link rel="canonical" href={url} />
       <meta name="robots" content={noindex ? 'noindex,nofollow' : 'index,follow'} />
       <meta property="og:type" content={l.pathname.startsWith('/blog/') ? 'article' : 'website'} />
-      <meta property="og:title" content={title} />
-      <meta property="og:description" content={description || c.seo_description} />
+      <meta property="og:title" content={fullTitle} />
+      <meta property="og:description" content={summary} />
+      <meta property="og:site_name" content={c.name} />
+      <meta property="og:locale" content="en_IN" />
       <meta property="og:url" content={url} />
       {pic && <meta property="og:image" content={pic} />}
       <meta name="twitter:card" content={pic ? 'summary_large_image' : 'summary'} />
-      <meta name="twitter:title" content={title} />
-      <meta name="twitter:description" content={description || c.seo_description} />
+      <meta name="twitter:title" content={fullTitle} />
+      <meta name="twitter:description" content={summary} />
       {pic && <meta name="twitter:image" content={pic} />}{' '}
       {import.meta.env.VITE_GOOGLE_SITE_VERIFICATION && (
         <meta
@@ -46,8 +67,10 @@ export function SEO({
           content={import.meta.env.VITE_GOOGLE_SITE_VERIFICATION}
         />
       )}{' '}
-      {json && (
-        <script type="application/ld+json">{JSON.stringify(json).replace(/</g, '\\u003c')}</script>
+      {structured && (
+        <script type="application/ld+json">
+          {JSON.stringify(structured).replace(/</g, '\\u003c')}
+        </script>
       )}
     </Helmet>
   );
