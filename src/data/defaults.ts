@@ -5,7 +5,7 @@ export const defaults: CreatorSettings = {
   name: 'Karishma Chauhan',
   bio: "I'm a Mumbai-based beauty, fashion and lifestyle creator sharing relatable beauty inspiration, fashion, GRWM, traditional looks and everyday moments. My goal is to create content that helps women feel more confident, inspired and comfortable expressing their personal style.",
   instagram_url: 'https://www.instagram.com/itskarishma.chauhan/',
-  youtube_url: '',
+  youtube_url: 'https://www.youtube.com/@Karishmachauhan2z',
   email: 'karishma.1706chauhan@gmail.com',
   location: 'Mumbai, India',
   followers: 628,

@@ -15,6 +15,7 @@ import {
   AffiliateButton,
   Disclosure,
   Share,
+  SocialLinks,
 } from '../components/common';
 import { portfolioCategories, productCategories } from '../data/defaults';
 import { safeUrl, safeDestination, preserveUtm } from '../utils/urls';
@@ -131,6 +132,7 @@ function Portfolio() {
           My content<span className="rose">.</span>
         </h1>
         <p>Beauty, fashion, lifestyle and traditional content, created with a personal touch.</p>
+        <SocialLinks />
       </div>
       <Filters
         items={portfolioCategories}
