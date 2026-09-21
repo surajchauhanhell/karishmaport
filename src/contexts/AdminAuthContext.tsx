@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 
@@ -28,6 +28,7 @@ async function bounded<T>(operation: PromiseLike<T>): Promise<T> {
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const [version, setVersion] = useState(0);
+  const verifiedUser = useRef<string | null>(null);
   const [access, setAccess] = useState<Access>({
     status: 'loading',
     signedIn: false,
@@ -44,23 +45,33 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     let disposed = false;
     let generation = 0;
     let scheduled: ReturnType<typeof setTimeout> | undefined;
-    const check = async () => {
+    const markChecking = (background: boolean) => {
+      setAccess((previous) =>
+        background && previous.status === 'allowed' && previous.path === pathname
+          ? previous
+          : { ...previous, status: 'loading', path: pathname },
+      );
+    };
+    const check = async (background = false) => {
       if (disposed) return;
       const current = ++generation;
       let signedIn = false;
       const update = (next: Omit<Access, 'path'>) => {
         if (!disposed && generation === current) setAccess({ ...next, path: pathname });
       };
-      setAccess((previous) => ({ ...previous, status: 'loading', path: pathname }));
+      markChecking(background);
       try {
         // Session storage only determines whether to check a token; it never grants access.
         const session = await bounded(client.auth.getSession());
         if (session.error) throw session.error;
         signedIn = !!session.data.session;
         if (!signedIn) {
+          verifiedUser.current = null;
           update({ status: 'anonymous', signedIn: false, error: '' });
           return;
         }
+        // A different account must complete a fresh check before retaining admin UI.
+        if (session.data.session?.user.id !== verifiedUser.current) markChecking(false);
         const verified = await bounded(client.auth.getUser());
         if (verified.error || !verified.data.user) {
           if (verified.error?.status === 401 || verified.error?.status === 403) {
@@ -75,6 +86,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         }
         const membership = await bounded(client.rpc('is_admin'));
         if (membership.error) throw membership.error;
+        if (!disposed && generation === current)
+          verifiedUser.current = membership.data === true ? verified.data.user.id : null;
         update({
           status: membership.data === true ? 'allowed' : 'denied',
           signedIn: true,
@@ -93,19 +106,21 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     void check();
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange((event) => {
+    } = client.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') return;
       ++generation; // Invalidate earlier requests immediately, including during sign-out.
       if (event === 'SIGNED_OUT') {
+        verifiedUser.current = null;
         clearTimeout(scheduled);
         setAccess({ status: 'anonymous', signedIn: false, error: '', path: pathname });
         return;
       }
-      setAccess((previous) => ({ ...previous, status: 'loading', path: pathname }));
+      const background = !!session && session.user.id === verifiedUser.current;
+      markChecking(background);
       clearTimeout(scheduled);
-      scheduled = setTimeout(() => void check(), 0); // Outside the Auth callback's lock.
+      scheduled = setTimeout(() => void check(background), 0); // Outside the Auth callback's lock.
     });
-    const onFocus = () => void check();
+    const onFocus = () => void check(true);
     window.addEventListener('focus', onFocus);
     return () => {
       disposed = true;

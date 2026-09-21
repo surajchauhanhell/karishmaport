@@ -284,6 +284,7 @@ function Manager({ table }: { table: TableName }) {
       {!inbox && (
         <button
           className="button"
+          disabled={!!editing || result.loading || !!result.error}
           onClick={() => setEditing(settings ? { ...(result.data[0] ?? defaults) } : newRow())}
         >
           {settings ? 'Edit settings' : 'Add new'}
@@ -300,6 +301,7 @@ function Manager({ table }: { table: TableName }) {
       />
       {editing && !inbox && (
         <Editor
+          key={String(editing.id || 'new')}
           table={table}
           initial={editing}
           onClose={() => setEditing(null)}
@@ -331,7 +333,7 @@ function Manager({ table }: { table: TableName }) {
           </button>
         </section>
       )}
-      {(catalog || inbox) && (
+      {(catalog || inbox) && result.data.length > 0 && (!editing || inbox) && (
         <div className="actions">
           <label className="field">
             Search records
@@ -358,57 +360,59 @@ function Manager({ table }: { table: TableName }) {
           )}
         </div>
       )}
-      <div className="admin-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>{inbox ? 'Enquiry' : 'Name / title'}</th>
-              <th>{inbox ? 'Subject / campaign' : 'Status / category'}</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!visibleRows.length && !result.loading && (
+      {result.data.length > 0 && (!editing || inbox) && (
+        <div className="admin-table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td colSpan={4}>No matching records.</td>
+                <th>{inbox ? 'Enquiry' : 'Name / title'}</th>
+                <th>{inbox ? 'Subject / campaign' : 'Status / category'}</th>
+                <th>Created</th>
+                <th>Actions</th>
               </tr>
-            )}
-            {visibleRows.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  {String(row.name || row.title || row.brand_name || row.keyword || row.id)}
-                  {inbox && (
-                    <>
-                      <br />
-                      {String(row.email)}
-                    </>
-                  )}
-                </td>
-                <td>
-                  {String(
-                    (inbox ? row.subject || row.campaign_type : undefined) ??
-                      row.status ??
-                      row.category ??
-                      (row.published ? 'Published' : row.active ? 'Active' : ''),
-                  )}
-                </td>
-                <td>{row.created_at ? new Date(row.created_at).toLocaleDateString() : ''}</td>
-                <td>
-                  <button onClick={() => setEditing({ ...row })}>
-                    {inbox ? 'View message' : 'Edit'}
-                  </button>
-                  {!settings && (
-                    <button style={{ marginLeft: 15 }} onClick={() => setDeleting(row.id)}>
-                      Delete
+            </thead>
+            <tbody>
+              {!visibleRows.length && !result.loading && (
+                <tr>
+                  <td colSpan={4}>No matching records.</td>
+                </tr>
+              )}
+              {visibleRows.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    {String(row.name || row.title || row.brand_name || row.keyword || row.id)}
+                    {inbox && (
+                      <>
+                        <br />
+                        {String(row.email)}
+                      </>
+                    )}
+                  </td>
+                  <td>
+                    {String(
+                      (inbox ? row.subject || row.campaign_type : undefined) ??
+                        row.status ??
+                        row.category ??
+                        (row.published ? 'Published' : row.active ? 'Active' : ''),
+                    )}
+                  </td>
+                  <td>{row.created_at ? new Date(row.created_at).toLocaleDateString() : ''}</td>
+                  <td>
+                    <button onClick={() => setEditing({ ...row })}>
+                      {inbox ? 'View message' : 'Edit'}
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                    {!settings && (
+                      <button style={{ marginLeft: 15 }} onClick={() => setDeleting(row.id)}>
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {deleting && <Confirm busy={busy} onCancel={() => setDeleting(null)} onConfirm={del} />}
     </>
   );
@@ -492,6 +496,7 @@ function Editor({
   const update = (key: string, value: unknown) => setValues((v) => ({ ...v, [key]: value }));
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy || uploads > 0) return;
     setError('');
     setBusy(true);
     try {
@@ -567,7 +572,11 @@ function Editor({
             ))}
         </dl>
       )}
-      <div className="form-grid">
+      <fieldset
+        className="form-grid"
+        disabled={busy}
+        style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+      >
         {fields.map((field) => (
           <EditorField
             key={field.key}
@@ -577,7 +586,7 @@ function Editor({
             onUpload={(delta) => setUploads((n) => n + delta)}
           />
         ))}
-      </div>
+      </fieldset>
       {table === 'looks' && !!values.id && <LookAssignments lookId={String(values.id)} />}{' '}
       {table === 'looks' && !values.id && (
         <p>Save the look first, then edit it to assign products.</p>
@@ -591,7 +600,12 @@ function Editor({
         <button className="button" disabled={busy || uploads > 0}>
           {busy ? 'Saving…' : uploads ? 'Uploading…' : 'Save changes'}
         </button>
-        <button className="button secondary" type="button" disabled={busy} onClick={onClose}>
+        <button
+          className="button secondary"
+          type="button"
+          disabled={busy || uploads > 0}
+          onClick={onClose}
+        >
           Cancel
         </button>
       </div>

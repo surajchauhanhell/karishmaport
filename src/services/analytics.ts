@@ -8,6 +8,7 @@ declare global {
 }
 let gaLoaded = false;
 export function loadAnalytics() {
+  if (/^\/admin(?:\/|$)/.test(location.pathname)) return;
   const id = import.meta.env.VITE_GA_MEASUREMENT_ID;
   if (
     gaLoaded ||
@@ -44,6 +45,8 @@ export function attribution() {
   }
 }
 export function track(event_name: string, entity_id?: string) {
+  // Creator/authentication pages are not public visitor analytics.
+  if (/^\/admin(?:\/|$)/.test(location.pathname)) return;
   if (localStorage.getItem('analytics-consent') === 'yes')
     window.gtag?.('event', event_name, { entity_id, page_path: location.pathname });
   if (!supabase) return;
