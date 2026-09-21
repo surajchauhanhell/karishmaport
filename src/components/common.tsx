@@ -275,29 +275,48 @@ export function ProductCard({ item }: { item: Product }) {
           <span className="badge">{item.is_demo ? 'Demo product' : item.badge}</span>
         )}
       </Link>
-      <p className="eyebrow">{item.brand || item.category}</p>
-      <h3>
-        <Link to={`/shop/${item.slug}`}>{item.name}</Link>
-      </h3>
-      <p>{item.description}</p>
-      {item.price !== null && (
-        <p>
-          {new Intl.NumberFormat('en-IN', { style: 'currency', currency: item.currency }).format(
-            item.price,
-          )}
+      <div className="product-card-body">
+        <p className="eyebrow">
+          {item.category}
+          {item.brand ? ` � ${item.brand}` : ''}
         </p>
-      )}
-      <AffiliateButton product={item} />
-      {safeUrl(item.reel_url) && (
-        <a
-          className="text-link"
-          href={safeUrl(item.reel_url)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Watch my Reel
-        </a>
-      )}
+        <h3 className="product-card-title">
+          <Link to={`/shop/${item.slug}`} title={item.name}>
+            {item.name}
+          </Link>
+        </h3>
+        <p className="product-card-description">{item.description}</p>
+        <div className="product-card-footer">
+          {item.price !== null && (
+            <p className="product-card-price">
+              {new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: item.currency,
+              }).format(item.price)}
+            </p>
+          )}
+          <div className="product-card-actions">
+            <AffiliateButton product={item} />
+            <Link
+              className="product-details-link"
+              to={`/shop/${item.slug}`}
+              aria-label={`View details for ${item.name}`}
+            >
+              View details
+            </Link>
+          </div>
+          {safeUrl(item.reel_url) && (
+            <a
+              className="text-link product-reel"
+              href={safeUrl(item.reel_url)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Watch my Reel <Play size={13} />
+            </a>
+          )}
+        </div>
+      </div>
     </article>
   );
 }

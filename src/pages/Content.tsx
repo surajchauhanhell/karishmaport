@@ -266,7 +266,7 @@ function Shop() {
     );
   }
   return (
-    <div className="container page-body">
+    <div className="container page-body shop-page">
       <SEO title="Shop My Picks" />
       <div className="page-header">
         <p className="eyebrow">THE BEAUTY SHELF</p>
@@ -300,7 +300,7 @@ function Shop() {
         onChange={(v) => setParams(v === 'All' ? {} : { category: v })}
       />
       <p className="count">{filtered.length} discoveries</p>
-      <div className="grid four">
+      <div className="grid shop-grid">
         {filtered.map((item) => (
           <ProductCard key={item.id} item={item} />
         ))}
@@ -358,8 +358,7 @@ function Blog() {
         </div>
       );
     if (!item) return <Missing name="story" />;
-    const url = new URL(`/blog/${item.slug}`, seo.origin)
-      .href;
+    const url = new URL(`/blog/${item.slug}`, seo.origin).href;
     return (
       <div className="container">
         <SEO
