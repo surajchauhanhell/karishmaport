@@ -1,4 +1,3 @@
-import seo from '../data/seo.json';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, ArrowRight, Sparkles } from 'lucide-react';
 import { useCreator } from '../contexts/CreatorContext';
@@ -7,6 +6,7 @@ import {
   SEO,
   Photo,
   SocialLinks,
+  CreatorProfiles,
   Stats,
   Heading,
   PortfolioCard,
@@ -32,22 +32,7 @@ export default function Home() {
   const posts = b.data.filter((x) => x.status === 'published').slice(0, 3);
   return (
     <>
-      <SEO
-        title={c.seo_title}
-        json={{
-          '@context': 'https://schema.org',
-          '@type': 'ProfilePage',
-          mainEntity: {
-            '@type': 'Person',
-            name: c.name,
-            url: seo.origin + '/',
-            alternateName: '@itskarishma.chauhan',
-            jobTitle: 'Beauty, Fashion & Lifestyle Content Creator',
-            sameAs: [c.instagram_url, ...(safeUrl(c.youtube_url) ? [c.youtube_url] : [])],
-            address: { '@type': 'PostalAddress', addressLocality: 'Mumbai', addressCountry: 'IN' },
-          },
-        }}
-      />
+      <SEO title={c.seo_title} />
       <section className="hero container">
         <div className="hero-copy">
           <p className="eyebrow">
@@ -60,6 +45,7 @@ export default function Home() {
           </h1>
           <p className="hero-sub">{c.headline}</p>
           <p className="hero-description">{c.intro}</p>
+          <p>Welcome to Its Karishma — the official portfolio of {c.name}.</p>
           <div className="actions">
             <Link className="button" to="/portfolio">
               View my work <ArrowUpRight size={18} />
@@ -98,6 +84,7 @@ export default function Home() {
           )}
         </div>
       </section>
+      <CreatorProfiles />
       <div className="container stats-wrap">
         <Stats />
       </div>

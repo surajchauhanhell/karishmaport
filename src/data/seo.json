@@ -2,11 +2,11 @@
   "origin": "https://itskarishma.vercel.app",
   "pages": {
     "/": {
-      "title": "Karishma Chauhan | Mumbai Beauty, Fashion & Lifestyle Creator",
-      "description": "Meet Karishma Chauhan, a Mumbai beauty, fashion and lifestyle creator. Explore her reels, traditional looks, product picks and brand collaboration services."
+      "title": "Karishma Chauhan (Its Karishma) | Beauty & Fashion Creator",
+      "description": "Meet Karishma Chauhan, the Mumbai beauty, fashion and lifestyle creator behind Its Karishma. Explore her portfolio, official Instagram, YouTube and collaborations."
     },
     "/about": {
-      "title": "About Karishma Chauhan | Mumbai Content Creator",
+      "title": "About Karishma Chauhan (Its Karishma) | Mumbai Creator",
       "description": "Get to know Karishma Chauhan and her approach to beauty, fashion, GRWM and everyday lifestyle content from Mumbai, India."
     },
     "/portfolio": {

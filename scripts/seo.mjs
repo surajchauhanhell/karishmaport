@@ -1,6 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadEnv } from 'vite';
+import { identityGraph } from '../src/utils/identity.mjs';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import ReactMarkdown from 'react-markdown';
 const env = { ...loadEnv('production', process.cwd(), ''), ...process.env };
 const seo = JSON.parse(await fs.readFile('src/data/seo.json', 'utf8'));
 const origin = seo.origin;
@@ -19,6 +23,7 @@ let settings = {
   seo_description:
     'Discover Karishma Chauhan, a Mumbai-based beauty, fashion and lifestyle creator sharing makeup, GRWM, traditional looks, fashion inspiration and everyday content.',
   instagram_url: 'https://www.instagram.com/itskarishma.chauhan/',
+  youtube_url: 'https://www.youtube.com/@Karishmachauhan2z',
 };
 const routes = [
   ['/', ''],
@@ -72,8 +77,48 @@ if (env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY) {
         image: r.featured_image || r.thumbnail_url || r.image_url,
         modified: r.updated_at || r.published_at || r.created_at,
         article: prefix === 'blog' ? r : null,
+        content: r.content || r.description || r.excerpt || '',
       });
     }
+}
+// Visible initial HTML for visitors and crawlers, replaced by the interactive React app.
+// All content comes from the same public settings/records used by the application.
+function snapshot(route, title, description) {
+  const social = [
+    ['Instagram', settings.instagram_url],
+    ['YouTube', settings.youtube_url],
+  ]
+    .flatMap(([label, value]) => {
+      try {
+        const url = new URL(value);
+        if (url.protocol !== 'https:') return [];
+        return [
+          `<a rel="me noopener noreferrer" href="${esc(url.href)}">${label}: ${esc(url.pathname.replace(/^\//, '').replace(/\/$/, ''))}</a>`,
+        ];
+      } catch {
+        return [];
+      }
+    })
+    .join(' · ');
+  const profile = ['/', '/about', '/media-kit'].includes(route.url);
+  const children = routes.filter(
+    (r) => r.url !== route.url && (route.url === '/' || r.url.startsWith(route.url + '/')),
+  );
+  const body = route.content
+    ? renderToStaticMarkup(React.createElement(ReactMarkdown, { skipHtml: true }, route.content))
+    : '';
+  return `<header class="container"><a href="/">Its Karishma · ${esc(settings.name)}</a>
+    <nav aria-label="Main navigation">${routes
+      .filter((r) => seo.pages[r.url])
+      .map((r) => `<a href="${esc(r.url)}">${esc(r.title || 'Home')}</a>`)
+      .join(' · ')}</nav></header>
+    <main id="main" class="container section"><h1>${esc(title)}</h1><p>${esc(description)}</p>
+    ${profile && settings.bio ? `<p>${esc(settings.bio)}</p>` : ''}
+    ${body}
+    <section><h2>${esc(settings.name)} · Official Instagram &amp; YouTube</h2>
+    <p>Its Karishma is the home of ${esc(settings.name)}, a Mumbai beauty, fashion and lifestyle creator.</p>${social}</section>
+    ${children.length ? `<section><h2>Explore ${route.url === '/' ? 'Its Karishma' : esc(route.title)}</h2><ul>${children.map((r) => `<li><a href="${esc(r.url)}">${esc(r.title || 'Home')}</a></li>`).join('')}</ul></section>` : ''}
+    </main>`;
 }
 for (const r of routes) {
   const title =
@@ -93,36 +138,13 @@ for (const r of routes) {
         image: r.image || undefined,
         mainEntityOfPage: url,
       }
-    : r.url === '/'
-      ? {
-          '@context': 'https://schema.org',
-          '@type': 'ProfilePage',
-          mainEntity: {
-            '@type': 'Person',
-            name: settings.name,
-            url: origin + '/',
-            jobTitle: 'Beauty, Fashion & Lifestyle Content Creator',
-            alternateName: '@itskarishma.chauhan',
-            sameAs: [
-              settings.instagram_url,
-              ...(settings.youtube_url ? [settings.youtube_url] : []),
-            ],
-            address: { '@type': 'PostalAddress', addressLocality: 'Mumbai', addressCountry: 'IN' },
-          },
-        }
-      : {
-          '@context': 'https://schema.org',
-          '@type': ['/portfolio', '/shop', '/blog'].includes(r.url) ? 'CollectionPage' : 'WebPage',
-          name: title,
-          description,
-          url,
-          isPartOf: { '@type': 'WebSite', name: settings.name, url: origin + '/' },
-        };
-  const meta = `<title>${esc(title)}</title><meta data-rh="true" name="description" content="${esc(description)}"><link data-rh="true" rel="canonical" href="${esc(url)}"><meta data-rh="true" name="robots" content="index,follow"><meta data-rh="true" property="og:site_name" content="${esc(settings.name)}"><meta data-rh="true" property="og:locale" content="en_IN"><meta data-rh="true" property="og:title" content="${esc(title)}"><meta data-rh="true" property="og:description" content="${esc(description)}"><meta data-rh="true" property="og:url" content="${esc(url)}"><meta data-rh="true" property="og:type" content="${r.article ? 'article' : 'website'}"><meta data-rh="true" name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}"><meta data-rh="true" name="twitter:title" content="${esc(title)}"><meta data-rh="true" name="twitter:description" content="${esc(description)}">${image ? `<meta data-rh="true" property="og:image" content="${esc(image)}"><meta data-rh="true" name="twitter:image" content="${esc(image)}">` : ''}${env.VITE_GOOGLE_SITE_VERIFICATION ? `<meta data-rh="true" name="google-site-verification" content="${esc(env.VITE_GOOGLE_SITE_VERIFICATION)}">` : ''}${schema ? `<script data-rh="true" type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script>` : ''}`;
+    : identityGraph(settings, origin, r.url, title, description);
+  const meta = `<title>${esc(title)}</title><meta data-rh="true" name="description" content="${esc(description)}"><link data-rh="true" rel="canonical" href="${esc(url)}"><meta data-rh="true" name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"><meta data-rh="true" property="og:site_name" content="Its Karishma"><meta data-rh="true" property="og:locale" content="en_IN"><meta data-rh="true" property="og:title" content="${esc(title)}"><meta data-rh="true" property="og:description" content="${esc(description)}"><meta data-rh="true" property="og:url" content="${esc(url)}"><meta data-rh="true" property="og:type" content="${r.article ? 'article' : 'website'}"><meta data-rh="true" name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}"><meta data-rh="true" name="twitter:title" content="${esc(title)}"><meta data-rh="true" name="twitter:description" content="${esc(description)}">${image ? `<meta data-rh="true" property="og:image" content="${esc(image)}"><meta data-rh="true" name="twitter:image" content="${esc(image)}">` : ''}${env.VITE_GOOGLE_SITE_VERIFICATION ? `<meta data-rh="true" name="google-site-verification" content="${esc(env.VITE_GOOGLE_SITE_VERIFICATION)}">` : ''}${schema ? `<script data-rh="true" type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script>` : ''}`;
   const html = base
     .replace(/<title>.*?<\/title>/s, '')
     .replace(/<meta name="description"[^>]*\/>/, '')
-    .replace('</head>', `${meta}</head>`);
+    .replace('</head>', `${meta}</head>`)
+    .replace('<div id="root"></div>', `<div id="root">${snapshot(r, title, description)}</div>`);
   const output =
     r.url === '/' ? 'dist/index.html' : path.join('dist', r.url.slice(1), 'index.html');
   await fs.mkdir(path.dirname(output), { recursive: true });
@@ -133,4 +155,15 @@ await fs.writeFile(
   `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map((r) => `<url><loc>${esc(origin + r.url)}</loc>${r.modified && !Number.isNaN(Date.parse(r.modified)) ? `<lastmod>${new Date(r.modified).toISOString()}</lastmod>` : ''}</url>`).join('')}</urlset>`,
 );
 await fs.writeFile('dist/robots.txt', `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
+await fs.writeFile(
+  'dist/404.html',
+  base
+    .replace(/<title>.*?<\/title>/s, '<title>Page not found | Its Karishma</title>')
+    .replace(/<meta name="description"[^>]*\/>/, '')
+    .replace('</head>', '<meta data-rh="true" name="robots" content="noindex,follow"></head>')
+    .replace(
+      '<div id="root"></div>',
+      '<div id="root"><main class="container section"><h1>Page not found</h1><p>This page may have moved or is no longer available.</p><a href="/">Back to Its Karishma</a></main></div>',
+    ),
+);
 console.log(`SEO: generated ${routes.length} route documents and sitemap.`);

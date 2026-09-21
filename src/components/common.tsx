@@ -8,6 +8,7 @@ import { track } from '../services/analytics';
 import type { Product, PortfolioItem, BlogPost } from '../types';
 import { useState, useEffect, type ReactNode } from 'react';
 import seo from '../data/seo.json';
+import { identityGraph } from '../utils/identity.mjs';
 export function SEO({
   title,
   description,
@@ -33,27 +34,25 @@ export function SEO({
   const structured =
     json ||
     (!noindex
-      ? {
-          '@context': 'https://schema.org',
-          '@type': ['/portfolio', '/shop', '/blog'].includes(l.pathname)
-            ? 'CollectionPage'
-            : 'WebPage',
-          name: fullTitle,
-          description: summary,
-          url,
-          isPartOf: { '@type': 'WebSite', name: c.name, url: origin + '/' },
-        }
+      ? identityGraph(c, origin, l.pathname.replace(/\/$/, '') || '/', fullTitle, summary)
       : undefined);
   return (
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={summary} />
       <link rel="canonical" href={url} />
-      <meta name="robots" content={noindex ? 'noindex,nofollow' : 'index,follow'} />
+      <meta
+        name="robots"
+        content={
+          noindex
+            ? 'noindex,nofollow'
+            : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'
+        }
+      />
       <meta property="og:type" content={l.pathname.startsWith('/blog/') ? 'article' : 'website'} />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={summary} />
-      <meta property="og:site_name" content={c.name} />
+      <meta property="og:site_name" content="Its Karishma" />
       <meta property="og:locale" content="en_IN" />
       <meta property="og:url" content={url} />
       {pic && <meta property="og:image" content={pic} />}
@@ -132,7 +131,7 @@ export function SocialLinks() {
       <a
         href={safeUrl(c.instagram_url)}
         target="_blank"
-        rel="noopener noreferrer"
+        rel="me noopener noreferrer"
         onClick={() => track('instagram_click')}
       >
         <Instagram size={17} />
@@ -142,7 +141,7 @@ export function SocialLinks() {
         <a
           href={safeUrl(c.youtube_url)}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="me noopener noreferrer"
           onClick={() => track('youtube_click')}
         >
           <Play size={17} />
@@ -154,6 +153,36 @@ export function SocialLinks() {
         Email
       </a>
     </div>
+  );
+}
+export function CreatorProfiles() {
+  const c = useCreator();
+  return (
+    <section className="container section" aria-labelledby="official-profiles">
+      <Heading eyebrow="ITS KARISHMA" title="Find Karishma online" />
+      <h3 id="official-profiles">{c.name} · Official Instagram & YouTube</h3>
+      <p>
+        Its Karishma is the home of {c.name}, a beauty, fashion and lifestyle creator based in{' '}
+        {c.location}. Explore makeup, GRWM, traditional looks and everyday inspiration, or get in
+        touch for a brand collaboration.
+      </p>
+      <div className="social-links">
+        {[
+          ['Instagram', c.instagram_url],
+          ['YouTube', c.youtube_url],
+        ].map(([label, url]) =>
+          safeUrl(url) ? (
+            <a key={label} href={safeUrl(url)} target="_blank" rel="me noopener noreferrer">
+              {label}: {new URL(safeUrl(url)).pathname.replace(/^\//, '').replace(/\/$/, '')}
+            </a>
+          ) : null,
+        )}
+      </div>
+      <p>
+        <Link to="/portfolio">Explore the portfolio</Link> ·{' '}
+        <Link to="/work-with-me">Collaborate with Karishma</Link>
+      </p>
+    </section>
   );
 }
 export function Stats() {
